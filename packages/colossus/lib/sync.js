@@ -29,12 +29,9 @@ async function sync_callback(api, config, storage)
   // FIXME this isn't actually on chain yet, so we'll fake it.
   const knownContentIds = await api.assets.getKnownContentIds() || [];
 
-  const role_addr = api.identities.key.address;
-
   // Iterate over all sync objects, and ensure they're synced.
   const allChecks = knownContentIds.map(async (content_id) => {
-    let { relationship, relationshipId } = await api.assets.getStorageRelationshipAndId(role_addr, content_id);
-
+    
     let fileLocal;
     try {
       // check if we have content or not
@@ -55,36 +52,11 @@ async function sync_callback(api, config, storage)
       }
       return;
     }
-
-    if (!relationship) {
-      // create relationship
-      debug(`Creating new storage relationship for ${content_id.encode()}`);
-      try {
-        relationshipId = await api.assets.createAndReturnStorageRelationship(role_addr, content_id);
-        await api.assets.toggleStorageRelationshipReady(role_addr, relationshipId, true);
-      } catch (err) {
-        debug(`Error creating new storage relationship ${content_id.encode()}: ${err.stack}`);
-        return;
-      }
-    } else if (!relationship.ready) {
-      debug(`Updating storage relationship to ready for ${content_id.encode()}`);
-      // update to ready. (Why would there be a relationship set to ready: false?)
-      try {
-        await api.assets.toggleStorageRelationshipReady(role_addr, relationshipId, true);
-      } catch(err) {
-        debug(`Error setting relationship ready ${content_id.encode()}: ${err.stack}`);
-      }
-    } else {
-      // we already have content and a ready relationship set. No need to do anything
-      // debug(`content already stored locally ${content_id.encode()}`);
-    }
   });
-
 
   await Promise.all(allChecks);
   debug('sync run complete');
 }
-
 
 async function sync_periodic(api, config, storage)
 {
